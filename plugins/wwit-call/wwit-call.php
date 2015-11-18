@@ -23,15 +23,15 @@ function call_form() {
   echo '<input type="email" name="call-email" value="' . (isset($_POST["call-email"]) ? esc_attr($_POST["call-email"]) : '') . '" size="40" />';
   echo '</p>';
   echo '<p>';
-  echo 'Application (required)<br/>';
+  echo 'Application (required) <br/>';
   echo '<input type="text" name="call-application" pattern="[a-zA-Z ]+" value="' . (isset($_POST["call-application"]) ? esc_attr($_POST["call-application"]) : '') . '" size="40" />';
   echo '</p>';
   echo '<p><input type="submit" name="call-submitted" value="Send"></p>';
   echo '</form>';
-}
+} // end function call_form()
  
 function call_http(){
-  // if the submit button is clicked, make the call
+  // if submit button clicked, make the call
   if (isset($_POST['call-submitted'])){
     // sanitize form values
     $name = sanitize_text_field($_POST["call-name"]);
@@ -39,36 +39,38 @@ function call_http(){
     $application = sanitize_text_field($_POST["call-application"]);
     $password = sanitize_text_field($_POST["http-password"]);
 
-    // vLaunch test site
-    $url = 'https://vlaunch.rtp.raleigh.ibm.com/groups';
-
     // UCD test site
     // $url = 'https://rtpucd01-srv.tivlab.raleigh.ibm.com:8443/cli/application/';
+
+    // vLaunch test site
+    $url = 'https://vlaunch.rtp.raleigh.ibm.com/groups';
 
     // vLaunch create VM
     // $url = 'https://vlaunch.rtp.raleigh.ibm.com/newrequests/RTP/1/createVM';
 
     $args = array(
-      'headers' => array(
-        'Authorization' => 'Basic ' . base64_encode($name . ':' . $password)
-      ), 'sslverify' => false
-    );
+      'headers' => array('Authorization' => 'Basic ' . base64_encode($name . ':' . $password)),
+      'sslverify' => false
+      ); // end arg definition
+
     $response = wp_remote_get($url, $args);
     $msg = wp_remote_retrieve_response_message ($response);
     // If not empty, display message
     if (! empty($msg)){
       echo 'Message: <pre>';
       print_r ($msg);
-    echo '</pre>';
-    }
-    $http_code = wp_remote_retrieve_response_code ($response);
-    echo 'Code: <pre>';
-    print_r ($http_code);
-    echo '</pre>';
-    // If call processed display success
-    if ( $response_code == '200' ) {
-      echo '<p>Success!</p>';
+      echo '</pre>';
       }
+    $http_code = wp_remote_retrieve_response_code ($response);
+    if (! empty($http_code)){
+      echo 'Code: <pre>';
+      print_r ($http_code);
+      echo '</pre>';
+      }
+    // Display result
+    if ( $http_code == '200' ) {
+      echo '<p>Success!</p>';
+      } else { echo '<p>An unexpected error occurred</p>'; }
 
     echo 'Response: <pre>';
     print_r ($response);
@@ -77,8 +79,8 @@ function call_http(){
 
     $body = wp_remote_retrieve_body($response);
     echo '<p>Body:' . $body . '</p>';
-  } //end if ( isset( $_POST['call-submitted'] ) )
-} // end function call_mail
+  } // end isset($_POST['call-submitted'])
+} // end function call_http
 
 function call_shortcode() {
   ob_start();
