@@ -22,58 +22,94 @@ function deploy_vm_form() {
   echo '</form>';
 } // end function deploy_vm_form()
 
+function check_error($response){
+  $msg = wp_remote_retrieve_response_message ($response);
+  $code = wp_remote_retrieve_response_code ($response);
+  echo '<br>Code = ';
+  print_r ($code);
+  echo ', ';
+  print_r ($msg);
+  switch ($code) {
+    case '200':
+      echo ' - Success!';
+      break;
+    case '401':
+      echo ' - Insufficient privileges, bad credentials, or malformed request.';
+      break;
+    case '404':
+      echo ' - Endpoint does not exist.';
+      break;
+    case '422':
+      echo ' - No valid search predicate.';
+      break;
+    default: echo 'Unexpected error';}
+  if ($code !== 200){
+    // Print error from response body
+      $body = wp_remote_retrieve_body($response);
+      echo '<br>';
+      print_r ($body);
+  }
+  echo '<br>';
+  return $code;
+}
 function deploy_vm(){
-  // if submit button clicked, create a vm
+  $host = 'https://vlaunch.rtp.raleigh.ibm.com/';
+
+  // if submit button clicked, set up call
   if (isset($_POST['call-submitted'])){
     // sanitize form values
     $name = sanitize_text_field($_POST["call-name"]);
     $password = sanitize_text_field($_POST["http-password"]);
-
-    // vLaunch test site - list groups
-    
-    $url = 'https://vlaunch.rtp.raleigh.ibm.com/groups';
     $args = array(
       'headers' => array('Authorization' => 'Basic ' . base64_encode($name . ':' . $password)),
       'sslverify' => false
       ); // end arg definition
+
+    // vLaunch authentication - get authorization
+    $url = $host . 'api/token';
     $response = wp_remote_get($url, $args);
-   
+    echo '<b>Get token</b> ';
+    $http_code = check_error ($response);
+    if ($http_code == '200'){
+    //  Parse API request authorization token from response body
+        $body = wp_remote_retrieve_body($response);
+        $auth = (explode('"', $body));
+        $token = $auth[7];
+    }
 
     // vLaunch - create VM
-    /*
-    $url = 'https://vlaunch.rtp.raleigh.ibm.com/newrequests/RTP/1/createVM';
-    $args = array(
-      'headers' => array('Authorization' => 'Basic ' . base64_encode($name . ':' . $password)),
-      'sslverify' => false
-    $response = wp_remote_get($url, $args);
-    */
-    $msg = wp_remote_retrieve_response_message ($response);
-    // If not empty, display message
-    if (! empty($msg)){
-      echo 'Message: <pre>';
-      print_r ($msg);
-      echo '</pre>';
-      }
-    $http_code = wp_remote_retrieve_response_code ($response);
-    if (! empty($http_code)){
-      echo 'Code: <pre>';
-      print_r ($http_code);
-      echo '</pre>';
-      }
-    // Display result
-    if ( $http_code == '200' ) {
-      echo '<p>Success!</p>';
-      } else { echo '<p>An unexpected error occurred</p>'; }
 
+    $args[headers] [Authorization] = 'Token token=' . $token;
+
+    // This url gets a list of the mgmt servers to which I have access
+    // I will use ID=136 (visvc6A) 
+    // $url = $host . 'api/v1/mgmtservers?id';
+    // echo '<b>Get management servers</b> ';
+
+    // This url gets a list of all workflows on the servers I can access
+    // To Automatically Provision a New VM, use ID 387 (CreateVM) for visvc6a; ID 1 is for VISVC1
+    // $url = $host . 'api/v1/workflows';
+    // echo '<b>Get workflows</b> ';
+
+    // This url gets a list of all workflow templates on the servers I can access
+    // Using ID 151 (UB14-4-64SVR) for Ubuntu 14.04 Server 64-bit on visvc6a
+    // $url = $host . 'api/v1/templates';
+    // echo '<b>Get templates</b> ';
+
+    // $response = wp_remote_get($url, $args);
+
+    $url = $host . 'api/v1/actions/deployvm/136'; //Deploy a New VM
+    // $url = $host . 'api/v1/requests'; // Create Request
+    // $url = $host . 'newrequests/RTP/1/createVM';
+
+    echo '<b>Deploy VM</b> ';
+    $response = wp_remote_post($url, $args);
+    check_error ($response);
     echo 'Response: <pre>';
     print_r ($response);
     // var_dump ($response);
     echo '</pre>';
 
-    $body = wp_remote_retrieve_body($response);
-    echo 'Body: <pre>';
-    print_r ($body);
-    echo '</pre>';
   } //end (isset( $_POST['call-submitted'] ) )
 } // end function deploy_vm
 
